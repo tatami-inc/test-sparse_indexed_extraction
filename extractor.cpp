@@ -66,7 +66,9 @@ size_t collect_pure_binary(const std::vector<std::vector<int> >& indices, const 
 }
 
 size_t intlog2(size_t x) {
-    size_t out = 1; // roughly rounding up the log2, ensure that it can't be zero.
+    // Rounding up the log2 to be conservative. This also ensures that the
+    // output can't be zero, which would cause problems in the if/elses below.
+    size_t out = 1;
     while (x >>= 1) {
         ++out;
     }
@@ -179,9 +181,9 @@ int main(int argc, char* argv []) {
     int nc;
     app.add_option("-c,--ncol", nc, "Number of columns")->default_val(10000);
     double start;
-    app.add_option("--start", start, "Start of the extraction, as a fraction of the number of rows")->default_val(0.1);
+    app.add_option("--start", start, "Start of the extraction, as a fraction of the number of rows")->default_val(0);
     double end;
-    app.add_option("--end", end, "End of the extraction, as a fraction of the number of rows")->default_val(0.9);
+    app.add_option("--end", end, "End of the extraction, as a fraction of the number of rows")->default_val(1);
     int step;
     app.add_option("--step", step, "Step size of the extraction, in terms of number of rows")->default_val(10);
     CLI11_PARSE(app, argc, argv);
@@ -209,6 +211,7 @@ int main(int argc, char* argv []) {
     for (int r = true_start; r < true_end; r += step) {
         extract.push_back(r);
     }
+    std::cout << "Using a step size of " << step << " from " << true_start << " to " << true_end << std::endl;
 
     // Running through the possibilities.
     {
@@ -216,7 +219,7 @@ int main(int argc, char* argv []) {
         auto collected = collect_linear(indices, extract);
         auto tstop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart);
-        std::cout << "Boosted linear time: " << duration.count() << " for " << collected << " sum" << std::endl;
+        std::cout << "Linear time: " << duration.count() << " for " << collected << " sum" << std::endl;
     }
 
     {
@@ -224,7 +227,7 @@ int main(int argc, char* argv []) {
         auto collected = collect_pure_binary(indices, extract);
         auto tstop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart);
-        std::cout << "Pure binary time: " << duration.count() << " for " << collected << " sum" << std::endl;
+        std::cout << "Binary time: " << duration.count() << " for " << collected << " sum" << std::endl;
     }
 
     {

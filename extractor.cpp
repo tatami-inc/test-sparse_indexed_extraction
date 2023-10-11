@@ -38,6 +38,7 @@ void collect_linear_internal(const std::vector<int>& current, const std::vector<
             continue;
         }
 
+        // Don't use the loop conditions, as this results in unnecessary evaluation before the first increment.
         while (1) {
             ++k;
             if (k == end) {
@@ -48,7 +49,7 @@ void collect_linear_internal(const std::vector<int>& current, const std::vector<
             }
         }
 
-        if (current[k] == limit) {
+        if (current[k] == limit) { // We can only get to this point if k < end and current[k] >= limit.
             ++collected;
             ++k;
         }

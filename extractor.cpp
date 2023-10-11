@@ -85,7 +85,8 @@ size_t collect_hybrid(const std::vector<std::vector<int> >& indices, const std::
         for (; j < num; ++j) {
             auto limit = extract[j];
 
-            if (current[k] == limit) {
+            auto candidate = current[k];
+            if (candidate == limit) {
                 ++collected;
                 ++k;
                 if (k == end) {
@@ -93,16 +94,20 @@ size_t collect_hybrid(const std::vector<std::vector<int> >& indices, const std::
                 } else {
                     continue;
                 }
-            } else if (current[k] > limit) {
+            } else if (candidate > limit) {
                 continue;
             }
 
-            // Use an exponential step-up, which mimics a reverse binary search.
+            // Use an exponential step-up, starting with +1, then +2, then +4,
+            // and so on.  This could be interpreted as the reverse of a binary
+            // search that terminates at the left-most edge. We special-case
+            // the initial step of +1 as it's pretty common.
             ++k;
             if (k == end) {
                 break;
             }
-            if (current[k] == limit) {
+            candidate = current[k];
+            if (candidate == limit) {
                 ++collected;
                 ++k;
                 if (k == end) {
@@ -110,17 +115,22 @@ size_t collect_hybrid(const std::vector<std::vector<int> >& indices, const std::
                 } else {
                     continue;
                 }
-            } else if (current[k] > limit) {
+            } else if (candidate > limit) {
                 continue;
             }
 
             size_t step = 1;
             do {
-                step <<= 1;
+                step <<= 1; // i.e., step of 2, then 4, then 8 ... 
+                if (step >= end - k) { // avoid issues with overflow.
+                    k = end;
+                    break;
+                }
                 k += step;
-            } while (k < end && current[k] < limit);
+                candidate = current[k];
+            } while (candidate < limit);
 
-            if (k < end && current[k] == limit) {
+            if (k < end && candidate == limit) {
                 ++collected;
                 ++k;
                 if (k == end) {
@@ -130,7 +140,11 @@ size_t collect_hybrid(const std::vector<std::vector<int> >& indices, const std::
                 }
             }
 
-            // Perform a binary search to narrow down the effects of the step-up.
+            // Perform a binary search to trim down any overshooting after the
+            // step-up. If a binary search is treated as a decision tree, we
+            // basically just walked up the tree from the left-most edge (i.e.,
+            // the 'k' at the start) to some intermediate node (or the root)
+            // and now we're walking back down to find the 'limit'.
             size_t right = std::min(k, end);
             k -= step;
 

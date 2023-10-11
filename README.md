@@ -24,7 +24,7 @@ but to use the exponential step-up and binary search to short-circuit unnecessar
 
 ## Results
 
-All timings here are presented in milliseconds on a Dell i7 laptop with 16 GB RAM running Ubuntu 20.04.
+All timings here are presented in milliseconds on a Dell i7 laptop with 16 GB RAM running Ubuntu 20.04, compiled with GCC 9.4.0.
 
 In the default parameters, every 10th element (on average) is non-zero, and we want to also extract every 10th element.
 This means that the sparse index and extraction vectors are comparable in size, so it is not surprising that the linear method performs better than the binary search.

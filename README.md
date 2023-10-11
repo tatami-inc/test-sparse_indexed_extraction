@@ -31,11 +31,11 @@ This means that the sparse index and extraction vectors are comparable in size, 
 
 ```console
 $ ./build/extractor
-Testing a 10000 x 10000 matrix with a density of 0.1
-Using a step size of 10 from 0 to 10000
-Linear time: 62 for 999712 sum
-Binary time: 153 for 999712 sum
-Hybrid time: 67 for 999712 sum
+Testing a 50000 x 10000 matrix with a density of 0.1
+Using a step size of 10 from 0 to 50000
+Linear time: 315 for 4996740 sum
+Binary time: 836 for 4996708 sum
+Hybrid time: 376 for 4996708 sum
 ```
 
 If we reduce the step size, we increase the size of the extraction vector.
@@ -43,45 +43,64 @@ This penalizes the binary search implementation, which is hard-coded to iterate 
 
 ```console
 $ ./build/extractor --step 1
-Testing a 10000 x 10000 matrix with a density of 0.1
-Using a step size of 1 from 0 to 10000
-Linear time: 125 for 10000475 sum
-Binary time: 1045 for 10000475 sum
-Hybrid time: 152 for 10000475 sum
+Testing a 50000 x 10000 matrix with a density of 0.1
+Using a step size of 1 from 0 to 50000
+Linear time: 579 for 49995342 sum
+Binary time: 6337 for 49995342 sum
+Hybrid time: 601 for 49995342 sum
 ```
 
 Conversely, if we increase the step size and the density, we reduce the size of the extraction vector and increase the size of the sparse index vector.
-This now favors the binary search.
+Now binary search is starting to be less bad:
+
+```console
+$ ./build/extractor --density 0.3 --step 20
+Testing a 50000 x 10000 matrix with a density of 0.3
+Using a step size of 20 from 0 to 50000
+Linear time: 293 for 7493525 sum
+Binary time: 595 for 7493525 sum
+Hybrid time: 384 for 7493525 sum
+```
+
+Or if we take it to the extreme, we can favor the binary search:
 
 ```console
 $ ./build/extractor --density 1 --step 100
-Testing a 10000 x 10000 matrix with a density of 1
-Using a step size of 100 from 0 to 10000
-Linear time: 70 for 1000000 sum
-Binary time: 46 for 1000000 sum
-Hybrid time: 31 for 1000000 sum
+Testing a 50000 x 10000 matrix with a density of 1
+Using a step size of 100 from 0 to 50000
+Linear time: 253 for 5000000 sum
+Binary time: 225 for 5000000 sum
+Hybrid time: 132 for 5000000 sum
 ```
 
-Pleasantly enough, the hybrid approach performs close to the best method in all scenarios.
+Pleasantly enough, the hybrid approach performs close to (or is) the best method in all scenarios.
 Its superiority over the binary search in the last scenario is bcause the hybrid approach focuses on the left-most interval,
 thus avoiding redundant traversal of the right-most elements.
 
 Note that we can easily improve the binary search by ensuring that the outer iteration is done on the shorter vector,
 so that the logarithmic time complexity can be applied to the larger vector.
-For example, we see a major speed-up after inverting the `--step 1` run, though it is still slower than the linear search.
+For example, we see a major speed-up after inverting the `--step 1 (--density 0.1)` run, though it is still slower than the linear search.
 
 ```console
-$ ./build/extractor --step 10 --density 1 
-Testing a 10000 x 10000 matrix with a density of 1
-Using a step size of 10 from 0 to 10000
-Linear time: 58 for 10000000 sum
-Binary time: 113 for 10000000 sum
-Hybrid time: 68 for 10000000 sum
+$ ./build/extractor --step 10 --density 1
+Testing a 50000 x 10000 matrix with a density of 1
+Using a step size of 10 from 0 to 50000
+Linear time: 236 for 50000000 sum
+Binary time: 790 for 50000000 sum
+Hybrid time: 357 for 50000000 sum
 ```
 
-So, what can we conclude?
+## Concluding remarks
+
 Despite its simpliciy, the linear search performs pretty well, even in the worst-case scenarios that should favor the binary search.
-Happily enough, this is already implemented in **tatami**; so let's stick with it.
+I assume that this is because branch prediction allows uninteresting elements to be skipped efficiently in the linear method,
+whereas the binary search suffers from unpredictable branches.
+I'd also speculate that both methods are subject to the same memory bandwidth limits - 
+the linear search obviously needs to look at each element,
+while the binary search probably operates within a single cache line (and thus does not really skip loading of any element).
+
+The hybrid approach is also good and I suppose we could use it all the time.
+However, it is a lot more complicated to implement, and we do pay a minor performance penalty, so some more work may be required there.
 
 ## Build instructions
 

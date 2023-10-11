@@ -8,6 +8,53 @@
 #include <queue>
 #include <random>
 
+/** LINEAR **/
+
+void collect_linear_internal(const std::vector<int>& current, const std::vector<int>& extract, size_t& collected) {
+    size_t num = extract.size();
+    size_t j = 0;
+    if (current[0]) {
+        j = std::lower_bound(extract.begin(), extract.end(), current[0]) - extract.begin();
+    }
+
+    size_t end = current.size();
+    size_t k = 0;
+    if (extract[0]) {
+        k = std::lower_bound(current.begin(), current.end(), extract[0]) - current.begin();
+    }
+
+    for (; j < num; ++j) {
+        auto limit = extract[j];
+
+        // Skip the loop if the current element is already a match or exceeds the limit.
+        if (limit < current[k]) {
+            continue;
+        } else if (limit == current[k]) {
+            ++k;
+            ++collected;
+            if (k == end) {
+                return;
+            }
+            continue;
+        }
+
+        while (1) {
+            ++k;
+            if (k == end) {
+                return; // an *_internal function allows u to break out of the outer loop immediately by just returning.
+            } 
+            if (current[k] >= limit) {
+                break;
+            }
+        }
+
+        if (current[k] == limit) {
+            ++collected;
+            ++k;
+        }
+    }
+}
+
 size_t collect_linear(const std::vector<std::vector<int> >& indices, const std::vector<int>& extract) {
     size_t num = extract.size();
     if (num == 0) {
@@ -16,35 +63,13 @@ size_t collect_linear(const std::vector<std::vector<int> >& indices, const std::
 
     size_t collected = 0;
     for (int c = 0, nc = indices.size(); c < nc; ++c) {
-        auto& current = indices[c];
-
-        size_t j = 0;
-        if (current[0]) {
-            j = std::lower_bound(extract.begin(), extract.end(), current[0]) - extract.begin();
-        }
-        size_t end = current.size();
-        size_t k = 0;
-
-        for (; j < num; ++j) {
-            auto limit = extract[j];
-            if (limit < current[k]) {
-                continue;
-            }
-            while (k < end && current[k] < limit) {
-                ++k;
-            } 
-            if (k == end) {
-                break;
-            }
-            if (current[k] == limit) {
-                ++collected;
-                ++k;
-            }
-        }
+        collect_linear_internal(indices[c], extract, collected);
     }
 
     return collected;
 }
+
+/** BINARY **/
 
 size_t collect_pure_binary(const std::vector<std::vector<int> >& indices, const std::vector<int>& extract) {
     if (extract.empty()) {
@@ -68,6 +93,103 @@ size_t collect_pure_binary(const std::vector<std::vector<int> >& indices, const 
     return collected;
 }
 
+/** HYBRID **/
+
+void collect_hybrid_internal(const std::vector<int>& current, const std::vector<int>& extract, size_t& collected) {
+    size_t num = extract.size();
+    size_t j = 0;
+    if (current[0]) {
+        j = std::lower_bound(extract.begin(), extract.end(), current[0]) - extract.begin();
+    }
+
+    size_t end = current.size();
+    size_t k = 0;
+    if (extract[0]) {
+        k = std::lower_bound(current.begin(), current.end(), extract[0]) - current.begin();
+    }
+
+    for (; j < num; ++j) {
+        auto limit = extract[j];
+
+        // Handle the common case of the current[k] already exceeding/equalling the limit.
+        if (current[k] > limit) {
+            continue;
+        } else if (current[k] == limit) {
+            ++collected;
+            ++k;
+            if (k == end) {
+                return;
+            }
+            continue;
+        }
+
+        // Use an exponential step-up, starting with +1, then +2, then +4,
+        // and so on.  This could be interpreted as the reverse of a binary
+        // search that terminates at the left-most edge. We special-case
+        // the initial step of +1 as it's pretty common.
+        ++k;
+        if (k == end) {
+            return;
+        }
+        if (current[k] > limit) {
+            continue;
+        } else if (current[k] == limit) {
+            ++collected;
+            ++k;
+            if (k == end) {
+                return;
+            }
+            continue;
+        } 
+
+        size_t step = 1, last_k = k;
+        do {
+            step <<= 1; // i.e., step of 2, then 4, then 8 ... 
+            if (step >= end - k) { // avoid issues with overflow.
+                k = end;
+                break;
+            }
+            last_k = k;
+            k += step;
+        } while (current[k] < limit);
+
+        if (k < end && current[k] == limit) {
+            ++collected;
+            ++k;
+            if (k == end) {
+                return;
+            } 
+            continue;
+        }
+
+        // Perform a binary search to trim down any overshooting after the
+        // step-up. If a binary search is treated as a decision tree, we
+        // basically just walked up the tree from the left-most edge (i.e.,
+        // the 'k' at the start) to some intermediate node (or the root)
+        // and now we're walking back down to find the 'limit'.
+        size_t right = k;
+        k = last_k + 1; // 'current[last_k]' must be less than 'limit', as we would have otherwise escaped the loop sooner.
+
+        while (k < right) {
+            size_t mid = k + ((right - k) >> 1); 
+            auto midval = current[mid];
+            if (midval == limit) {
+                ++collected;
+                k = mid + 1;
+                break;
+            } else if (midval > limit) {
+                right = mid;
+            } else {
+                k = mid + 1;
+            }
+        }
+
+        if (k == end) {
+            return;
+        }
+    }
+}
+
 size_t collect_hybrid(const std::vector<std::vector<int> >& indices, const std::vector<int>& extract) {
     size_t num = extract.size();
     if (num == 0) {
@@ -76,100 +198,7 @@ size_t collect_hybrid(const std::vector<std::vector<int> >& indices, const std::
 
     size_t collected = 0;
     for (int c = 0, nc = indices.size(); c < nc; ++c) {
-        auto& current = indices[c];
-
-        size_t j = 0;
-        if (current[0]) {
-            j = std::lower_bound(extract.begin(), extract.end(), current[0]) - extract.begin();
-        }
-        size_t end = current.size();
-        size_t k = 0;
-
-        for (; j < num; ++j) {
-            auto limit = extract[j];
-
-            // Handle the common case of the candidate already exceeding/equalling the limit.
-            auto candidate = current[k];
-            if (candidate == limit) {
-                ++collected;
-                ++k;
-                if (k == end) {
-                    break;
-                } else {
-                    continue;
-                }
-            } else if (candidate > limit) {
-                continue;
-            }
-
-            // Use an exponential step-up, starting with +1, then +2, then +4,
-            // and so on.  This could be interpreted as the reverse of a binary
-            // search that terminates at the left-most edge. We special-case
-            // the initial step of +1 as it's pretty common.
-            ++k;
-            if (k == end) {
-                break;
-            }
-            candidate = current[k];
-            if (candidate == limit) {
-                ++collected;
-                ++k;
-                if (k == end) {
-                    break;
-                } else {
-                    continue;
-                }
-            } else if (candidate > limit) {
-                continue;
-            }
-
-            size_t step = 1;
-            do {
-                step <<= 1; // i.e., step of 2, then 4, then 8 ... 
-                if (step >= end - k) { // avoid issues with overflow.
-                    k = end;
-                    break;
-                }
-                k += step;
-                candidate = current[k];
-            } while (candidate < limit);
-
-            if (k < end && candidate == limit) {
-                ++collected;
-                ++k;
-                if (k == end) {
-                    break;
-                } else {
-                    continue;
-                }
-            }
-
-            // Perform a binary search to trim down any overshooting after the
-            // step-up. If a binary search is treated as a decision tree, we
-            // basically just walked up the tree from the left-most edge (i.e.,
-            // the 'k' at the start) to some intermediate node (or the root)
-            // and now we're walking back down to find the 'limit'.
-            size_t right = std::min(k, end);
-            k -= step;
-
-            while (k < right) {
-                size_t mid = k + ((right - k) >> 1); 
-                auto midval = current[mid];
-                if (midval == limit) {
-                    ++collected;
-                    k = mid + 1;
-                    break;
-                } else if (midval > limit) {
-                    right = mid;
-                } else {
-                    k = mid + 1;
-                }
-            }
-
-            if (k == end) {
-                break;
-            }
-        }
+        collect_hybrid_internal(indices[c], extract, collected);
     }
 
     return collected;
@@ -181,7 +210,7 @@ int main(int argc, char* argv []) {
     double density;
     app.add_option("-d,--density", density, "Density of the expanded sparse matrix")->default_val(0.1);
     int nr;
-    app.add_option("-r,--nrow", nr, "Number of rows")->default_val(10000);
+    app.add_option("-r,--nrow", nr, "Number of rows")->default_val(50000);
     int nc;
     app.add_option("-c,--ncol", nc, "Number of columns")->default_val(10000);
     double start;

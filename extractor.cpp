@@ -19,21 +19,21 @@ size_t collect_linear(const std::vector<std::vector<int> >& indices, const std::
         auto& current = indices[c];
 
         size_t j = 0;
-        if (extract[0]) {
-            j = std::lower_bound(current.begin(), current.end(), extract[0]) - current.begin();
+        if (current[0]) {
+            j = std::lower_bound(extract.begin(), extract.end(), current[0]) - extract.begin();
         }
         size_t end = current.size();
         size_t k = 0;
 
-        for (; j < end; ++j) {
-            auto limit = current[j];
-            while (k < num && extract[k] < limit) {
+        for (; j < num; ++j) {
+            auto limit = extract[j];
+            while (k < end && current[k] < limit) {
                 ++k;
             }
-            if (k == num) {
+            if (k == end) {
                 break;
             }
-            if (extract[k] == limit) {
+            if (current[k] == limit) {
                 ++collected;
                 ++k;
             }
@@ -65,16 +65,6 @@ size_t collect_pure_binary(const std::vector<std::vector<int> >& indices, const 
     return collected;
 }
 
-size_t intlog2(size_t x) {
-    // Rounding up the log2 to be conservative. This also ensures that the
-    // output can't be zero, which would cause problems in the if/elses below.
-    size_t out = 1;
-    while (x >>= 1) {
-        ++out;
-    }
-    return out;
-}
-
 size_t collect_hybrid(const std::vector<std::vector<int> >& indices, const std::vector<int>& extract) {
     size_t num = extract.size();
     if (num == 0) {
@@ -84,86 +74,82 @@ size_t collect_hybrid(const std::vector<std::vector<int> >& indices, const std::
     size_t collected = 0;
     for (int c = 0, nc = indices.size(); c < nc; ++c) {
         auto& current = indices[c];
-        if (current.empty()) {
-            continue;
+
+        size_t j = 0;
+        if (current[0]) {
+            j = std::lower_bound(extract.begin(), extract.end(), current[0]) - extract.begin();
         }
+        size_t end = current.size();
+        size_t k = 0;
 
-        // We start by figuring out the intersection of ranges.
-        if (current.front() > extract.back() || extract.front() > current.back()) {
-            continue;
-        }
+        for (; j < num; ++j) {
+            auto limit = extract[j];
 
-        auto cur_start = current.begin(), cur_end = current.end();
-        auto ext_start = extract.begin(), ext_end = extract.end();
-        if (current.front() > extract.front()) {
-            ext_start = std::lower_bound(ext_start, ext_end, current.front());
-        } else if (current.front() < extract.front()) {
-            cur_start = std::lower_bound(cur_start, cur_end, extract.front());
-        }
-
-        if (current.back() > extract.back()) {
-            ext_end = std::lower_bound(ext_start, ext_end, current.back() + 1);
-        } else if (current.back() < extract.back()) {
-            cur_end = std::lower_bound(cur_start, cur_end, extract.back() + 1);
-        }
-
-        size_t ext_count = ext_end - ext_start;
-        size_t cur_count = cur_end - cur_start;
-
-        if (ext_count > cur_count * intlog2(ext_count)) {
-            // Doing a binary search for each element in 'current'.
-            for (; cur_start != cur_end; ++cur_start) {
-                auto curval = *cur_start;
-                ext_start = std::lower_bound(ext_start, ext_end, curval);
-                if (ext_start == ext_end) {
+            if (current[k] == limit) {
+                ++collected;
+                ++k;
+                if (k == end) {
                     break;
-                } else if (*ext_start == curval) {
-                    ++collected;
+                } else {
+                    continue;
+                }
+            } else if (current[k] > limit) {
+                continue;
+            }
+
+            // Use an exponential step-up, which mimics a reverse binary search.
+            ++k;
+            if (k == end) {
+                break;
+            }
+            if (current[k] == limit) {
+                ++collected;
+                ++k;
+                if (k == end) {
+                    break;
+                } else {
+                    continue;
+                }
+            } else if (current[k] > limit) {
+                continue;
+            }
+
+            size_t step = 1;
+            do {
+                step <<= 1;
+                k += step;
+            } while (k < end && current[k] < limit);
+
+            if (k < end && current[k] == limit) {
+                ++collected;
+                ++k;
+                if (k == end) {
+                    break;
+                } else {
+                    continue;
                 }
             }
 
-        } else if (cur_count > ext_count * intlog2(cur_count)) {
-            // Doing a binary search for each element in 'extract'.
-            for (; ext_start != ext_end; ++ext_start) {
-                auto extval = *ext_start;
-                cur_start = std::lower_bound(cur_start, cur_end, extval);
-                if (cur_start == cur_end) {
-                    break;
-                } else if (*cur_start == extval) {
+            // Perform a binary search to narrow down the effects of the step-up.
+            size_t right = std::min(k, end);
+            k -= step;
+
+            while (k < right) {
+                size_t mid = k + ((right - k) >> 1); 
+                auto midval = current[mid];
+                if (midval == limit) {
                     ++collected;
+                    k = mid + 1;
+                    break;
+                } else if (midval > limit) {
+                    right = mid;
+                } else {
+                    k = mid + 1;
                 }
             }
 
-        } else if (ext_count > cur_count) {
-            // Inner loop over 'extract', to reduce loop restarts.
-            for (; cur_start != cur_end; ++cur_start) {
-                auto limit = *cur_start;
-                while (ext_start != ext_end && *ext_start < limit) {
-                    ++ext_start;
-                }
-                if (ext_start == ext_end) {
-                    break;
-                }
-                if (*ext_start == limit) {
-                    ++collected;
-                    ++ext_start;
-                }
-            }
-
-        } else {
-            // Inner loop over 'current', to reduce loop restarts.
-            for (; ext_start != ext_end; ++ext_start) {
-                auto limit = *ext_start;
-                while (cur_start != cur_end && *cur_start < limit) {
-                    ++cur_start;
-                }
-                if (cur_start == cur_end) {
-                    break;
-                }
-                if (*cur_start == limit) {
-                    ++collected;
-                    ++cur_start;
-                }
+            if (k == end) {
+                break;
             }
         }
     }

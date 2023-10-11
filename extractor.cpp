@@ -27,9 +27,12 @@ size_t collect_linear(const std::vector<std::vector<int> >& indices, const std::
 
         for (; j < num; ++j) {
             auto limit = extract[j];
+            if (limit < current[k]) {
+                continue;
+            }
             while (k < end && current[k] < limit) {
                 ++k;
-            }
+            } 
             if (k == end) {
                 break;
             }
@@ -85,6 +88,7 @@ size_t collect_hybrid(const std::vector<std::vector<int> >& indices, const std::
         for (; j < num; ++j) {
             auto limit = extract[j];
 
+            // Handle the common case of the candidate already exceeding/equalling the limit.
             auto candidate = current[k];
             if (candidate == limit) {
                 ++collected;
@@ -215,26 +219,29 @@ int main(int argc, char* argv []) {
 
     // Running through the possibilities.
     {
+        std::cout << "Linear time: ";
         auto tstart = std::chrono::high_resolution_clock::now();
         auto collected = collect_linear(indices, extract);
         auto tstop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart);
-        std::cout << "Linear time: " << duration.count() << " for " << collected << " sum" << std::endl;
+        std::cout << duration.count() << " for " << collected << " sum" << std::endl;
     }
 
     {
+        std::cout << "Binary time: ";
         auto tstart = std::chrono::high_resolution_clock::now();
         auto collected = collect_pure_binary(indices, extract);
         auto tstop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart);
-        std::cout << "Binary time: " << duration.count() << " for " << collected << " sum" << std::endl;
+        std::cout << duration.count() << " for " << collected << " sum" << std::endl;
     }
 
     {
+        std::cout << "Hybrid time: ";
         auto tstart = std::chrono::high_resolution_clock::now();
         auto collected = collect_hybrid(indices, extract);
         auto tstop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart);
-        std::cout << "Hybrid time: " << duration.count() << " for " << collected << " sum" << std::endl;
+        std::cout << duration.count() << " for " << collected << " sum" << std::endl;
     }
 }

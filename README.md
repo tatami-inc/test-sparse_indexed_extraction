@@ -33,9 +33,9 @@ This means that the sparse index and extraction vectors are comparable in size, 
 $ ./build/extractor
 Testing a 10000 x 10000 matrix with a density of 0.1
 Using a step size of 10 from 0 to 10000
-Linear time: 73 for 999712 sum
-Binary time: 157 for 999712 sum
-Hybrid time: 74 for 999712 sum
+Linear time: 62 for 999712 sum
+Binary time: 153 for 999712 sum
+Hybrid time: 67 for 999712 sum
 ```
 
 If we reduce the step size, we increase the size of the extraction vector.
@@ -45,9 +45,9 @@ This penalizes the binary search implementation, which is hard-coded to iterate 
 $ ./build/extractor --step 1
 Testing a 10000 x 10000 matrix with a density of 0.1
 Using a step size of 1 from 0 to 10000
-Linear time: 185 for 10000475 sum
-Binary time: 1034 for 10000475 sum
-Hybrid time: 132 for 10000475 sum
+Linear time: 125 for 10000475 sum
+Binary time: 1045 for 10000475 sum
+Hybrid time: 152 for 10000475 sum
 ```
 
 Conversely, if we increase the step size and the density, we reduce the size of the extraction vector and increase the size of the sparse index vector.
@@ -57,40 +57,31 @@ This now favors the binary search.
 $ ./build/extractor --density 1 --step 100
 Testing a 10000 x 10000 matrix with a density of 1
 Using a step size of 100 from 0 to 10000
-Linear time: 69 for 1000000 sum
-Binary time: 43 for 1000000 sum
-Hybrid time: 33 for 1000000 sum
+Linear time: 70 for 1000000 sum
+Binary time: 46 for 1000000 sum
+Hybrid time: 31 for 1000000 sum
 ```
 
-Pleasantly enough, the hybrid approach is the best method (or close to it) in all scenarios.
-Its superiority over the two pure approaches is somewhat interesting but is probably just a consequence of the implementation;
-for linear search, the hybrid approach has hard-coded handling of the "step of 1" scenario,
-while for the binary search, the hybrid approach focuses on the left-most interval and avoids redundant traversal of the right-most elements.
+Pleasantly enough, the hybrid approach performs close to the best method in all scenarios.
+Its superiority over the binary search in the last scenario is bcause the hybrid approach focuses on the left-most interval,
+thus avoiding redundant traversal of the right-most elements.
 
-Note that there is some opportunity for optimizing all approaches by ensuring that the outer iteration is done on the shorter vector.
-This ensures that we process more elements during each invocation of the tight inner loops (or the binary search),
-reducing the overhead from the surrounding code.
-For example, inverting the `--density 1 --step 100` run above, we get a ~2-fold slow-down when iterating over the larger vector:
-
-```console
-$ ./build/extractor --density 0.01 --step 1 
-Testing a 10000 x 10000 matrix with a density of 0.01
-Using a step size of 1 from 0 to 10000
-Linear time: 124 for 998183 sum
-Binary time: 644 for 998183 sum
-Hybrid time: 77 for 998183 sum
-```
-
-Or alternatively, a 2-fold speed-up after inverting the `--step 1` run:
+Note that we can easily improve the binary search by ensuring that the outer iteration is done on the shorter vector,
+so that the logarithmic time complexity can be applied to the larger vector.
+For example, we see a major speed-up after inverting the `--step 1` run, though it is still slower than the linear search.
 
 ```console
 $ ./build/extractor --step 10 --density 1 
 Testing a 10000 x 10000 matrix with a density of 1
 Using a step size of 10 from 0 to 10000
-Linear time: 65 for 10000000 sum
-Binary time: 143 for 10000000 sum
-Hybrid time: 71 for 10000000 sum
+Linear time: 58 for 10000000 sum
+Binary time: 113 for 10000000 sum
+Hybrid time: 68 for 10000000 sum
 ```
+
+So, what can we conclude?
+Despite its simpliciy, the linear search performs pretty well, even in the worst-case scenarios that should favor the binary search.
+Happily enough, this is already implemented in **tatami**; so let's stick with it.
 
 ## Build instructions
 

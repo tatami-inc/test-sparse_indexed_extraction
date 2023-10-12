@@ -99,8 +99,9 @@ I'd also speculate that both methods are subject to the same memory bandwidth li
 the linear search obviously needs to look at each element,
 while the binary search probably operates within a single cache line (and thus does not really skip loading of any element).
 
-The hybrid approach is also good and I suppose we could use it all the time.
-However, it is a lot more complicated to implement, and we do pay a minor performance penalty, so some more work may be required there.
+The hybrid approach is also good and I suppose we could just use it all the time.
+It performs better than the linear approach in a few scenarios and is at least competitive in the other cases.
+However, it is a lot more complicated to implement.
 
 ## Build instructions
 

@@ -171,20 +171,13 @@ void collect_hybrid_internal(const std::vector<int>& current, const std::vector<
         // basically just walked up the tree from the left-most edge (i.e.,
         // the 'k' at the start) to some intermediate node (or the root)
         // and now we're walking back down to find the 'limit'.
-        size_t right = k;
-        k = last_k + 1; // 'current[last_k]' must be less than 'limit', as we would have otherwise escaped the loop sooner.
-
-        while (k < right) {
-            size_t mid = k + ((right - k) >> 1); 
-            auto midval = current[mid];
-            if (midval == limit) {
+        auto new_k = std::lower_bound(current.begin() + last_k, current.begin() + k, limit) - current.begin();
+        if (new_k < k) {
+            if (current[new_k] == limit) {
                 ++collected;
-                k = mid + 1;
-                break;
-            } else if (midval > limit) {
-                right = mid;
+                k = new_k + 1;
             } else {
-                k = mid + 1;
+                k = new_k;
             }
         }
 
@@ -208,6 +201,7 @@ size_t collect_hybrid(const std::vector<std::vector<int> >& indices, const std::
     return collected;
 }
 
+/** MAIN **/
 
 int main(int argc, char* argv []) {
     CLI::App app{"Expanded testing checks"};

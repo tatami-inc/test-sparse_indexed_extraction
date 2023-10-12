@@ -23,36 +23,40 @@ void collect_linear_internal(const std::vector<int>& current, const std::vector<
         k = std::lower_bound(current.begin(), current.end(), extract[0]) - current.begin();
     }
 
-    for (; j < num; ++j) {
-        auto limit = extract[j];
+    while (1) {
+        auto exval = extract[j];
+        auto curval = current[k];
 
-        // Skip the loop if the current element is already a match or exceeds the limit.
-        if (limit < current[k]) {
-            continue;
-        } else if (limit == current[k]) {
-            ++k;
+        if (exval < curval) {
+            while (1) {
+                ++j;
+                if (j == num) {
+                    return;
+                }
+                if (extract[j] >= curval) {
+                    break;
+                }
+            }
+
+        } else if (exval > curval) {
+            while (1) {
+                ++k;
+                if (k == end) {
+                    return;
+                }
+                if (exval <= current[k]) {
+                    break;
+                }
+            }
+
+        } else {
             ++collected;
+            ++k;
             if (k == end) {
                 return;
             }
-            continue;
-        }
-
-        // Don't use the loop conditions, as this results in unnecessary evaluation before the first increment.
-        while (1) {
-            ++k;
-            if (k == end) {
-                return; // an *_internal function allows u to break out of the outer loop immediately by just returning.
-            } 
-            if (current[k] >= limit) {
-                break;
-            }
-        }
-
-        if (current[k] == limit) { // We can only get to this point if k < end and current[k] >= limit.
-            ++collected;
-            ++k;
-            if (k == end) {
+            ++j;
+            if (j == num) {
                 return;
             }
         }

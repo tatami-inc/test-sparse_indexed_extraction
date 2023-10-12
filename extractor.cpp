@@ -52,6 +52,9 @@ void collect_linear_internal(const std::vector<int>& current, const std::vector<
         if (current[k] == limit) { // We can only get to this point if k < end and current[k] >= limit.
             ++collected;
             ++k;
+            if (k == end) {
+                return;
+            }
         }
     }
 }

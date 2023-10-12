@@ -32,10 +32,10 @@ This means that the sparse index and extraction vectors are comparable in size, 
 ```console
 $ ./build/extractor
 Testing a 50000 x 10000 matrix with a density of 0.1
-Using a step size of 10 from 0 to 50000
-Linear time: 315 for 4996740 sum
-Binary time: 836 for 4996708 sum
-Hybrid time: 376 for 4996708 sum
+vUsing a step size of 10 from 0 to 50000
+Linear time: 321 for 4996708 sum
+Binary time: 651 for 4996708 sum
+Hybrid time: 354 for 4996708 sum
 ```
 
 If we reduce the step size, we increase the size of the extraction vector.

@@ -210,21 +210,33 @@ size_t collect_hybrid(const std::vector<std::vector<int> >& indices, const std::
 
 /** LOOKUP **/
 
-std::vector<unsigned char> create_lookup_table(size_t max, const std::vector<int>& extract) {
-    std::vector<unsigned char> lookup(max);
-    for (auto i : extract) {
-        lookup[i] = 1;
+struct LookupTable {
+    std::vector<unsigned char> present;
+    size_t offset = 0;
+};
+
+LookupTable create_lookup_table(const std::vector<int>& extract) {
+    LookupTable output;
+    if (!extract.empty()) {
+        output.offset = extract.front();
+        size_t allocation = extract.back() - output.offset + 1;
+        output.present.resize(allocation);
+        for (auto i : extract) {
+            output.present[i - output.offset] = 1;
+        }
     }
-    return lookup;
+    return output;
 }
 
-size_t collect_lookup(const std::vector<std::vector<int> >& indices, const std::vector<unsigned char>& present) {
+size_t collect_lookup(const std::vector<std::vector<int> >& indices, const LookupTable& lookup) {
     size_t collected = 0;
+    size_t max = lookup.present.size();
     for (const auto& current : indices) {
         for (auto x : current) {
             // Deliberately creating a branch here, as actual applications will be
             // more complicated than counting the number of discovered elements.
-            if (present[x]) {
+            size_t i = x - lookup.offset;
+            if (i < max && lookup.present[i]) {
                 ++collected;
             }
         }
@@ -300,7 +312,7 @@ int main(int argc, char* argv []) {
         }
     });
 
-    auto tab = create_lookup_table(nr, extract);
+    auto tab = create_lookup_table(extract);
     ankerl::nanobench::Bench().run("lookup", [&](){
         auto collected = collect_lookup(indices, tab);
         if (total_sum != collected) {

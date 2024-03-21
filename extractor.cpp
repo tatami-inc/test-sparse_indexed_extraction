@@ -205,6 +205,30 @@ size_t collect_hybrid(const std::vector<std::vector<int> >& indices, const std::
     return collected;
 }
 
+/** LOOKUP **/
+
+std::vector<unsigned char> create_lookup_table(size_t max, const std::vector<int>& extract) {
+    std::vector<unsigned char> lookup(max);
+    for (auto i : extract) {
+        lookup[i] = 1;
+    }
+    return lookup;
+}
+
+size_t collect_lookup(const std::vector<std::vector<int> >& indices, const std::vector<unsigned char>& present) {
+    size_t collected = 0;
+    for (const auto& current : indices) {
+        for (auto x : current) {
+            // Deliberately creating a branch here, as actual applications will be
+            // more complicated than counting the number of discovered elements.
+            if (present[x]) {
+                ++collected;
+            }
+        }
+    }
+    return collected;
+}
+
 /** MAIN **/
 
 int main(int argc, char* argv []) {
@@ -271,6 +295,16 @@ int main(int argc, char* argv []) {
         std::cout << "Hybrid time: ";
         auto tstart = std::chrono::high_resolution_clock::now();
         auto collected = collect_hybrid(indices, extract);
+        auto tstop = std::chrono::high_resolution_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart);
+        std::cout << duration.count() << " for " << collected << " sum" << std::endl;
+    }
+
+    {
+        auto tab = create_lookup_table(nr, extract);
+        std::cout << "Lookup time: ";
+        auto tstart = std::chrono::high_resolution_clock::now();
+        auto collected = collect_lookup(indices, tab);
         auto tstop = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart);
         std::cout << duration.count() << " for " << collected << " sum" << std::endl;

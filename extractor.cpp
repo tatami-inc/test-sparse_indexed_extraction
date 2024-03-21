@@ -1,3 +1,6 @@
+#define ANKERL_NANOBENCH_IMPLEMENT
+#include "nanobench.h"
+
 #include "CLI/App.hpp"
 #include "CLI/Formatter.hpp"
 #include "CLI/Config.hpp"
@@ -272,41 +275,36 @@ int main(int argc, char* argv []) {
     }
     std::cout << "Using a step size of " << step << " from " << true_start << " to " << true_end << std::endl;
 
+    size_t total_sum = collect_linear(indices, extract);
+    std::cout << "Expecting a sum of " << total_sum << std::endl;
+
     // Running through the possibilities.
-    {
-        std::cout << "Linear time: ";
-        auto tstart = std::chrono::high_resolution_clock::now();
+    ankerl::nanobench::Bench().run("linear", [&](){
         auto collected = collect_linear(indices, extract);
-        auto tstop = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart);
-        std::cout << duration.count() << " for " << collected << " sum" << std::endl;
-    }
+        if (total_sum != collected) {
+            std::cerr << "WARNING: different result from linear access (" << collected << ")" << std::endl;
+        }
+    });
 
-    {
-        std::cout << "Binary time: ";
-        auto tstart = std::chrono::high_resolution_clock::now();
+    ankerl::nanobench::Bench().run("binary", [&](){
         auto collected = collect_pure_binary(indices, extract);
-        auto tstop = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart);
-        std::cout << duration.count() << " for " << collected << " sum" << std::endl;
-    }
+        if (total_sum != collected) {
+            std::cerr << "WARNING: different result from binary access (" << collected << ")" << std::endl;
+        }
+    });
 
-    {
-        std::cout << "Hybrid time: ";
-        auto tstart = std::chrono::high_resolution_clock::now();
+    ankerl::nanobench::Bench().run("hybrid", [&](){
         auto collected = collect_hybrid(indices, extract);
-        auto tstop = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart);
-        std::cout << duration.count() << " for " << collected << " sum" << std::endl;
-    }
+        if (total_sum != collected) {
+            std::cerr << "WARNING: different result from hybrid access (" << collected << ")" << std::endl;
+        }
+    });
 
-    {
-        auto tab = create_lookup_table(nr, extract);
-        std::cout << "Lookup time: ";
-        auto tstart = std::chrono::high_resolution_clock::now();
+    auto tab = create_lookup_table(nr, extract);
+    ankerl::nanobench::Bench().run("lookup", [&](){
         auto collected = collect_lookup(indices, tab);
-        auto tstop = std::chrono::high_resolution_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(tstop - tstart);
-        std::cout << duration.count() << " for " << collected << " sum" << std::endl;
-    }
+        if (total_sum != collected) {
+            std::cerr << "WARNING: different result from lookup access (" << collected << ")" << std::endl;
+        }
+    });
 }

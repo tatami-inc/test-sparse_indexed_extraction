@@ -14,9 +14,16 @@ include(FetchContent)
 FetchContent_Declare(
   cli11
   GIT_REPOSITORY https://github.com/CLIUtils/CLI11
-  GIT_TAG 291c587
+  GIT_TAG v2.4.1
+)
+
+FetchContent_Declare(
+    nanobench
+    GIT_REPOSITORY https://github.com/martinus/nanobench
+    GIT_TAG v4.3.11
 )
 
 FetchContent_MakeAvailable(cli11)
+FetchContent_MakeAvailable(nanobench)
 
-target_link_libraries(extractor CLI11::CLI11)
+target_link_libraries(extractor CLI11::CLI11 nanobench::nanobench)
